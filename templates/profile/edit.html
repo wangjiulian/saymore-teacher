@@ -1,0 +1,303 @@
+{% extends 'base.html' %}
+
+{% block title %}编辑个人信息 - SayMore老师端{% endblock %}
+
+{% block styles %}
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs5.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .required-label::after {
+        content: "*";
+        color: red;
+        margin-left: 4px;
+    }
+    
+    .form-section {
+        border-bottom: 1px solid #eee;
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .form-section h4 {
+        margin-bottom: 20px;
+        color: #4169E1;
+        font-weight: 600;
+    }
+    
+    .select2-container .select2-selection--multiple {
+        min-height: 38px;
+    }
+    
+    .select2-container--default .select2-selection--multiple {
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+    }
+    
+    .select2-container--default.select2-container--focus .select2-selection--multiple {
+        border-color: #4169E1;
+        box-shadow: 0 0 0 0.25rem rgba(65, 105, 225, 0.25);
+    }
+    
+    .note-editor.note-frame {
+        border-color: #ced4da;
+        border-radius: 0.25rem;
+    }
+    
+    .note-editor.note-frame.focus {
+        border-color: #4169E1;
+        box-shadow: 0 0 0 0.25rem rgba(65, 105, 225, 0.25);
+    }
+    
+    .btn-primary {
+        background-color: #4169E1;
+        border-color: #4169E1;
+    }
+    
+    .btn-primary:hover {
+        background-color: #3551b5;
+        border-color: #3551b5;
+    }
+    
+    /* Subject checkbox styling */
+    .subjects-container .form-check {
+        padding: 8px 12px;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        margin-bottom: 6px;
+    }
+    
+    .subjects-container .form-check:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .subjects-container .form-check-input:checked + .form-check-label {
+        color: #4169E1;
+        font-weight: 500;
+    }
+    
+    .subjects-container .form-check-input:focus {
+        box-shadow: none;
+        border-color: #4169E1;
+    }
+    
+    .subjects-container .form-check-input:checked {
+        background-color: #4169E1;
+        border-color: #4169E1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-10 mb-4">
+            <div class="content-card">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3 class="mb-0">编辑个人资料</h3>
+                    <a href="{{ url_for('profile.index') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>返回
+                    </a>
+                </div>
+                
+                <form method="post" action="{{ url_for('profile.edit') }}">
+                    {{ form.csrf_token }}
+                    
+                    <div class="form-section">
+                        <h4>基本信息</h4>
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label required-label">姓名</label>
+                                    {{ form.name(class="form-control", id="name") }}
+                                    {% if form.name.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in form.name.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nickname" class="form-label required-label">昵称</label>
+                                    {{ form.nickname(class="form-control", id="nickname") }}
+                                    {% if form.nickname.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in form.nickname.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="gender" class="form-label">性别</label>
+                                    {{ form.gender(class="form-select", id="gender") }}
+                                    {% if form.gender.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in form.gender.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="phone" class="form-label required-label">手机号</label>
+                                    {{ form.phone(class="form-control", id="phone") }}
+                                    <small class="form-text text-muted">手机号不可修改</small>
+                                    {% if form.phone.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in form.phone.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h4>教育与资质</h4>
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="education_school" class="form-label">毕业学校</label>
+                                    {{ form.education_school(class="form-control", id="education_school") }}
+                                    {% if form.education_school.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in form.education_school.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="education_level" class="form-label">学历</label>
+                                    {{ form.education_level(class="form-select", id="education_level") }}
+                                    {% if form.education_level.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {% for error in form.education_level.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+<!--                                <div class="mb-3">-->
+<!--                                    <label for="teaching_start_date" class="form-label">开始教学日期</label>-->
+<!--                                    {{ form.teaching_start_date(class="form-control", id="teaching_start_date", type="date") }}-->
+<!--                                    {% if form.teaching_start_date.errors %}-->
+<!--                                        <div class="invalid-feedback d-block">-->
+<!--                                            {% for error in form.teaching_start_date.errors %}-->
+<!--                                                {{ error }}-->
+<!--                                            {% endfor %}-->
+<!--                                        </div>-->
+<!--                                    {% endif %}-->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label required-label">可授课学科</label>
+                            <div class="card">
+                                <div class="card-body subjects-container">
+                                    <div class="row g-3">
+                                        {% for value, label in form.subjects.choices %}
+                                        <div class="col-lg-3 col-md-4 col-sm-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="subjects" id="subject_{{ value }}" value="{{ value }}"
+                                                       {% if value|string in form.subjects.data|map('string')|list %}checked{% endif %}>
+                                                <label class="form-check-label" for="subject_{{ value }}">
+                                                    {% if " - " in label %}
+                                                        {% set parts = label.split(" - ") %}
+                                                        <span class="text-muted small">{{ parts[0] }}</span> {{ parts[1] }}
+                                                    {% else %}
+                                                        <span class="fw-bold">{{ label }}</span>
+                                                    {% endif %}
+                                                </label>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">请至少选择一个学科</small>
+                            <div id="debug-subjects" class="mt-2 small text-muted"></div>
+                            {% if form.subjects.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.subjects.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save me-2"></i>保存个人资料
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs5.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+        // 检查学科数据
+        var subjectsElement = $('input[name="subjects"]');
+        console.log('Found subjects checkboxes:', subjectsElement.length);
+        
+        // 显示调试信息
+        var checkedCount = $('input[name="subjects"]:checked').length;
+        $('#debug-subjects').text('已选择 ' + checkedCount + ' 个学科');
+        
+        // 当选择变化时更新计数
+        $('input[name="subjects"]').on('change', function() {
+            var checkedCount = $('input[name="subjects"]:checked').length;
+            $('#debug-subjects').text('已选择 ' + checkedCount + ' 个学科');
+        });
+        
+        // 初始化富文本编辑器
+        $('.rich-editor').summernote({
+            placeholder: '请输入内容...',
+            tabsize: 2,
+            height: 200,
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['bold', 'underline', 'clear']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['insert', ['link']],
+                ['view', ['fullscreen', 'codeview', 'help']]
+            ],
+            callbacks: {
+                onImageUpload: function(files) {
+                    // 这里可以实现图片上传功能
+                    alert('暂不支持图片上传，请使用外部图片链接');
+                }
+            }
+        });
+    });
+</script>
+{% endblock %} 

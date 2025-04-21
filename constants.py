@@ -1,0 +1,8 @@
+# 系统常量配置
+
+# 课程时长（单位：分钟）
+CLASS_DURATION_MINUTES = 25
+
+NO_RESPONSIBILITY_CANCEL_TIME_INTERVAL = 60 * 60  # 一小时内无责取消
+
+CLASS_START_TIME_BUFFER_MINUTES = 5 * 60  # 提前 5 分钟开始上课

@@ -1,0 +1,372 @@
+{% extends 'base.html' %}
+
+{% block title %}Schedule - SayMore Teacher Portal{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('profile.index') }}">Home</a></li>
+<li class="breadcrumb-item active">Schedule</li>
+{% endblock %}
+
+{% block styles %}
+{{ super() }} {# Inherit base styles #}
+<style>
+    /* Keep specific styles for date grouping if needed */
+    .table th {
+        /* Styles from course_fee seem to be default bootstrap/base */
+        /* background-color: #f1f5fe; */
+        /* color: #4169E1; */
+    }
+    
+    .table-striped tbody tr:nth-of-type(odd) {
+         /* Styles from course_fee seem to be default bootstrap/base */
+        /* background-color: rgba(65, 105, 225, 0.05); */
+    }
+    
+    .badge-booked {
+        background-color: #dc3545;
+    }
+    
+    .badge-available {
+        background-color: #28a745;
+    }
+    
+    .badge-secondary {
+        background-color: #6c757d;
+    }
+    
+    .date-group {
+        margin-bottom: 30px;
+    }
+    
+    .date-header {
+        background-color: #e9ecef;
+        padding: 10px 15px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+        color: #495057;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid"> {# Match container-fluid from course_fee #}
+    {# Use card layout similar to course_fee/list.html #}
+    <div class="card shadow mb-4"> 
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">My Schedule</h5>
+            <a href="{{ url_for('availability.add_availability') }}" class="btn btn-light btn-sm"> {# Match button style #}
+                <i class="fas fa-plus me-2"></i>Add Available Time
+            </a>
+        </div>
+
+        <div class="card-body">
+            <!-- Search filters -->
+            {# Remove filter-card div, add mb-4 to form #}
+            <form id="availabilitySearchForm" action="{{ url_for('availability.list_availabilities') }}" method="get" class="row g-3 mb-4">
+                {# Use input-group layout #}
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text">Start Date</span>
+                        <input type="date" class="form-control" id="start_date" name="start_date_display" />
+                    </div>
+                </div>
+                <div class="col-md-4">
+                     <div class="input-group">
+                        <span class="input-group-text">End Date</span>
+                        <input type="date" class="form-control" id="end_date" name="end_date_display" />
+                    </div>
+                </div>
+                {# Place buttons side-by-side #}
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                    <a href="{{ url_for('availability.list_availabilities') }}" class="btn btn-secondary">
+                        <i class="fas fa-sync"></i> Reset
+                    </a>
+                </div>
+                
+                {# Hidden input for current date #}
+                <input type="hidden" id="current_date_hidden" name="c">
+            </form>
+            
+            <!-- Time slot list -->
+            {% if grouped_availabilities %}
+                {% for date, availabilities in grouped_availabilities.items() %}
+                    <div class="date-group">
+                        <div class="date-header">
+                            <i class="fas fa-calendar-day me-2"></i>{{ date }}
+                        </div>
+                        {# Add table-hover #}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover"> 
+                                <thead class="table-light"> {# Match thead style #}
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Start Time</th>
+                                        <th>End Time</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                {% for availability in availabilities %}
+                                    <tr>
+                                        <td>{{ availability.get_date_str() }}</td>
+                                        <td>{{ availability.get_start_time_str() }}</td>
+                                        <td>{{ availability.get_end_time_str() }}</td>
+                                        <td>
+                                            {% if availability.is_booked() %}
+                                                <span class="badge badge-booked">Booked</span>
+                                            {% elif availability.is_expired() %}
+                                                <span class="badge badge-secondary">Expired</span>
+                                            {% else %}
+                                                <span class="badge badge-available">Available</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {# Keep existing button logic #}
+                                            {% if availability.is_booked() %}
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Booked time slots cannot be deleted">
+                                                    <i class="fas fa-lock"></i>
+                                                </button>
+                                            {% elif availability.is_expired() %}
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Expired time slots cannot be deleted">
+                                                    <i class="fas fa-clock"></i>
+                                                </button>
+                                            {% else %}
+                                                <button type="button" class="btn btn-sm btn-outline-danger delete-btn" 
+                                                        data-id="{{ availability.id }}" data-time="{{ availability.get_date_str() }} {{ availability.get_start_time_str() }}">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                {# Use similar empty state display #}
+                <div class="text-center py-4">
+                     <div class="text-muted">
+                        <i class="fas fa-folder-open fa-3x mb-3"></i>
+                        <p>No available time slots. Please click the button in the top right to add.</p> {# Adjusted message #}
+                    </div>
+                </div>
+            {% endif %}
+        </div> {# End card-body #}
+    </div> {# End card #}
+</div> {# End container #}
+
+<!-- Delete confirmation modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the available time at <span id="delete-time"></span>?</p>
+                <p class="text-danger">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete">Confirm Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    // Function to convert date string YYYY-MM-DD to UTC timestamp (start/end of day)
+    function dateToUTCTimestamp(dateString, isEndOfDay = false) {
+        if (!dateString) return null;
+        try {
+            const parts = dateString.split('-');
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const day = parseInt(parts[2], 10);
+            if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+            let utcDate;
+            if (isEndOfDay) {
+                utcDate = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+            } else {
+                utcDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+            }
+             if (isNaN(utcDate.getTime())) return null;
+            return Math.floor(utcDate.getTime() / 1000);
+        } catch (e) {
+            console.error("Error converting date string ", dateString, " to timestamp:", e);
+            return null;
+        }
+    }
+
+    // Function to convert UTC timestamp (seconds) back to YYYY-MM-DD string
+    function timestampToDateString(timestamp) {
+        if (timestamp === null || timestamp === undefined) return '';
+        try {
+            const date = new Date(timestamp * 1000);
+            const year = date.getUTCFullYear();
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        } catch (e) {
+            console.error("Error converting timestamp ", timestamp, " to date string:", e);
+            return '';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- Check for 'c' parameter and redirect if missing --- 
+        const urlParams = new URLSearchParams(window.location.search);
+        const cTimestampFromUrl = urlParams.get('c');
+
+        if (!cTimestampFromUrl) {
+             // 'c' parameter is missing, calculate and redirect
+             console.log('Parameter \'c\' missing. Calculating and redirecting...');
+             const today = new Date();
+             const year = today.getFullYear();
+             const month = today.getMonth(); 
+             const day = today.getDate();
+             const startOfTodayLocal = new Date(year, month, day, 0, 0, 0, 0);
+             const todayTimestampSeconds = Math.floor(startOfTodayLocal.getTime() / 1000);
+             
+             // Add 'c' to existing params
+             urlParams.set('c', todayTimestampSeconds);
+             
+             // Construct new URL (base path + query string)
+             const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
+             console.log('Redirecting to:', newUrl);
+             window.location.replace(newUrl); // Use replace to avoid history entry
+             return; // Stop further execution on this load
+        } else {
+            console.log('Parameter \'c\' found in URL:', cTimestampFromUrl);
+            // 'c' exists, proceed with page load
+            // Ensure hidden field has the correct value from the URL for subsequent submits
+            const currentDateHiddenInput = document.getElementById('current_date_hidden');
+             if (currentDateHiddenInput) {
+                 currentDateHiddenInput.value = cTimestampFromUrl;
+             }
+        }
+        // --- End 'c' parameter check ---
+
+        // --- Form submission handling for availability search ---
+        const availabilitySearchForm = document.getElementById('availabilitySearchForm');
+        if (availabilitySearchForm) {
+            availabilitySearchForm.addEventListener('submit', function(event) {
+                event.preventDefault(); 
+                const startDateInput = document.getElementById('start_date');
+                const endDateInput = document.getElementById('end_date');
+                // Read timestamp directly from the hidden field (which was populated from URL or calculated)
+                const currentHiddenInput = document.getElementById('current_date_hidden'); 
+
+                // --- Date Validation (keep existing) ---
+                const startDateValue = startDateInput.value;
+                const endDateValue = endDateInput.value;
+                if (startDateValue && endDateValue && endDateValue < startDateValue) {
+                    alert('End date cannot be earlier than start date.');
+                    return; 
+                }
+                // --- End Date Validation ---
+
+                const startTimestamp = dateToUTCTimestamp(startDateValue, false); // UTC
+                const endTimestamp = dateToUTCTimestamp(endDateValue, true);   // UTC
+                const currentDateValue = currentHiddenInput ? currentHiddenInput.value : null; // Timestamp from hidden
+
+                // Build the query parameters
+                const params = new URLSearchParams();
+                if (startTimestamp !== null) params.set('start_timestamp', startTimestamp);
+                if (endTimestamp !== null) params.set('end_timestamp', endTimestamp);
+                if (currentDateValue !== null) params.set('c', currentDateValue); // Add current date timestamp
+
+                 // Redirect with new parameters
+                 console.log('Redirecting availability search with params:', params.toString());
+                 window.location.href = `${this.action}?${params.toString()}`;
+            });
+
+            // --- Set initial date values from URL timestamps on page load ---
+            // Read timestamps passed from Flask context
+            const initialStartTimestamp = {{ start_timestamp|tojson|safe }};
+            const initialEndTimestamp = {{ end_timestamp|tojson|safe }};
+            // Note: We don't need to read c_timestamp from context here for display purposes
+            // but it was passed from Flask, which is fine.
+            console.log('Initial Filter Timestamps from Flask:', initialStartTimestamp, initialEndTimestamp);
+            
+            if (initialStartTimestamp !== null) {
+                document.getElementById('start_date').value = timestampToDateString(initialStartTimestamp);
+            }
+            if (initialEndTimestamp !== null) {
+                document.getElementById('end_date').value = timestampToDateString(initialEndTimestamp);
+            }
+            // --- End setting initial date values ---
+        }
+        // --- End Form submission handling ---
+
+        // --- Keep Existing Delete Modal Logic --- 
+        const deleteModal = document.getElementById('deleteModal') ? new bootstrap.Modal(document.getElementById('deleteModal')) : null;
+        const deleteButtons = document.querySelectorAll('.delete-btn');
+        const confirmDeleteButton = document.getElementById('confirm-delete');
+        let currentIdToDelete = null; 
+
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                currentIdToDelete = this.dataset.id;
+                const deleteTimeSpan = document.getElementById('delete-time');
+                if(deleteTimeSpan) deleteTimeSpan.textContent = this.dataset.time || 'this time slot';
+                if(deleteModal) deleteModal.show();
+            });
+        });
+        
+        if(confirmDeleteButton) {
+            confirmDeleteButton.addEventListener('click', function() {
+                if (!currentIdToDelete) return;
+                
+                // Add CSRF token if needed
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const headers = { 'Content-Type': 'application/json' };
+                if (csrfToken) {
+                    headers['X-CSRF-Token'] = csrfToken;
+                }
+
+                fetch(`/availability/delete/${currentIdToDelete}`, { // Updated URL construction
+                    method: 'POST',
+                    headers: headers
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if(deleteModal) deleteModal.hide();
+                    // Use a toast or alert for feedback
+                    // Assuming a showToast function exists (like in other templates maybe?)
+                    if (typeof showToast === 'function') { 
+                        showToast(data.message, data.success ? 'success' : 'danger');
+                    } else {
+                        alert(data.message); // Fallback alert
+                    }
+                    if (data.success) {
+                        // Optional: remove row from table dynamically or reload
+                         setTimeout(() => location.reload(), 1500); 
+                    }
+                })
+                .catch(error => {
+                    if(deleteModal) deleteModal.hide();
+                    if (typeof showToast === 'function') {
+                         showToast('Delete failed, please try again later', 'danger');
+                    } else {
+                         alert('Delete failed, please try again later');
+                    }
+                    console.error('Delete failed:', error);
+                });
+            });
+        }
+        // --- End Delete Modal Logic --- 
+    });
+</script>
+{% endblock %} 

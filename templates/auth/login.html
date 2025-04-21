@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - SayMore Teacher Portal</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4169E1;
+            --primary-light: rgba(65, 105, 225, 0.1);
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --border-color: #E5E5E5;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #F5F7FA;
+            padding: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Background decorations */
+        body::before,
+        body::after {
+            content: '';
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color) 0%, #6495ED 100%);
+            opacity: 0.1;
+            z-index: -1;
+        }
+
+        body::before {
+            top: -100px;
+            left: -100px;
+        }
+
+        body::after {
+            bottom: -100px;
+            right: -100px;
+        }
+
+        .background-shapes {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.05;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .shape {
+            position: absolute;
+            background: var(--primary-color);
+        }
+
+        .shape-1 {
+            width: 100px;
+            height: 100px;
+            top: 20%;
+            left: 20%;
+            transform: rotate(45deg);
+        }
+
+        .shape-2 {
+            width: 50px;
+            height: 50px;
+            top: 40%;
+            right: 15%;
+            border-radius: 50%;
+        }
+
+        .shape-3 {
+            width: 75px;
+            height: 75px;
+            bottom: 25%;
+            left: 15%;
+            border-radius: 8px;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 2rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .login-logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-logo h1 {
+            color: var(--primary-color);
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .login-heading {
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .login-heading h2 {
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .login-heading p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .form-control {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(65, 105, 225, 0.25);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-weight: 500;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background-color: #3551b5;
+            border-color: #3551b5;
+        }
+
+        .form-footer {
+            margin-top: 1.5rem;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .form-footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .form-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .input-group .btn {
+            border-color: var(--border-color);
+            background-color: #f8f9fa;
+            color: var(--text-secondary);
+        }
+
+        .input-group .btn:hover {
+            background-color: #e9ecef;
+        }
+
+        .form-text {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Background decorations -->
+    <div class="background-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
+    <div class="login-container">
+        <div class="login-logo">
+            <h1>SayMore Teacher Portal</h1>
+        </div>
+
+        <div class="login-heading">
+            <h2>Teacher Login</h2>
+            <p>Please login with your phone number and verification code</p>
+        </div>
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="post" action="{{ url_for('auth.login') }}">
+            {{ form.csrf_token }}
+
+            <div class="mb-3">
+                <label for="phone" class="form-label">Phone Number</label>
+                {{ form.phone(class="form-control", placeholder="Please enter your phone number", id="phone", autocomplete="off") }}
+                {% if form.phone.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.phone.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="mb-4">
+                <label for="code" class="form-label">Verification Code</label>
+                <div class="input-group">
+                    {{ form.code(class="form-control", placeholder="Please enter verification code", id="code", autocomplete="off") }}
+                    <button type="button" class="btn btn-outline-secondary" id="send-code-btn">Get Code</button>
+                </div>
+                {% if form.code.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.code.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <div class="form-text">Verification code will be sent to your phone. During testing, you can use "1233" as the code</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Login</button>
+        </form>
+
+<!--        <div class="form-footer">-->
+<!--            <p>Having problems? Please contact <a href="mailto:support@happy-talk.com">support</a></p>-->
+<!--        </div>-->
+
+
+    </div>
+
+    <!-- JavaScript dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+        // Verification code button click event
+        document.addEventListener('DOMContentLoaded', function() {
+            const sendCodeBtn = document.getElementById('send-code-btn');
+            const phoneInput = document.getElementById('phone');
+
+            // Countdown time
+            let countdown = 60;
+            let timer = null;
+
+            // Start countdown
+            function startCountdown() {
+                sendCodeBtn.disabled = true;
+                sendCodeBtn.innerText = `Retry in ${countdown}s`;
+
+                timer = setInterval(function() {
+                    countdown--;
+                    sendCodeBtn.innerText = `Retry in ${countdown}s`;
+
+                    if (countdown <= 0) {
+                        clearInterval(timer);
+                        sendCodeBtn.disabled = false;
+                        sendCodeBtn.innerText = 'Get Code';
+                        countdown = 60;
+                    }
+                }, 1000);
+            }
+
+            // Send verification code
+            function sendVerificationCode() {
+                const phone = phoneInput.value.trim();
+
+                // Validate phone number format
+                if (!phone) {
+                    alert('Please enter your phone number');
+                    return;
+                }
+
+                if (!/^1[3-9]\d{9}$/.test(phone)) {
+                    alert('Please enter a valid phone number');
+                    return;
+                }
+
+                // Send request
+                $.ajax({
+                    url: "{{ url_for('auth.send_code') }}",
+                    type: 'POST',
+                    data: {
+                        phone: phone,
+                        csrf_token: "{{ csrf_token() }}"
+                    },
+                    headers: {
+                        'X-CSRFToken': "{{ csrf_token() }}"
+                    },
+                    beforeSend: function() {
+                        sendCodeBtn.disabled = true;
+                        sendCodeBtn.innerText = 'Sending...';
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            startCountdown();
+                            alert(response.message);
+                        } else {
+                            alert(response.message);
+                            sendCodeBtn.disabled = false;
+                            sendCodeBtn.innerText = 'Get Code';
+                        }
+                    },
+                    error: function() {
+                        alert('Sending failed, please try again later');
+                        sendCodeBtn.disabled = false;
+                        sendCodeBtn.innerText = 'Get Code';
+                    }
+                });
+            }
+
+            // Bind click event
+            sendCodeBtn.addEventListener('click', sendVerificationCode);
+        });
+    </script>
+  <div style="position: absolute; bottom: 10px; left: 0; right: 0; text-align: center;" class="copyright">
+        &copy; 2025 SayMore. All rights reserved.
+        湘ICP备2024088580号-2
+    </div>
+
+</body>
+</html> 

@@ -1,0 +1,420 @@
+{% extends 'base.html' %}
+
+{% block title %}课时记录 - SayMore老师端{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('profile.index') }}">首页</a></li>
+<li class="breadcrumb-item active">课时记录</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">课时记录</h5>
+            <a id="exportFeesBtn" href="#" class="btn btn-light btn-sm">
+                <i class="fas fa-file-export"></i> 导出记录
+            </a>
+        </div>
+
+        <div class="card-body">
+            <!-- 搜索表单 -->
+            <form method="GET" action="{{ url_for('course_fee.list_fees') }}" class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text">开始日期</span>
+                        <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text">结束日期</span>
+                        <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> 搜索
+                    </button>
+                    <a href="{{ url_for('course_fee.list_fees') }}" class="btn btn-secondary">
+                        <i class="fas fa-sync"></i> 重置
+                    </a>
+                </div>
+            </form>
+
+            <!-- 课时记录列表 -->
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>学生姓名</th>
+                        <th>课程标题</th>
+                        <th>课时数</th>
+                        <th>课时费 (元)</th>
+                        <th>类型</th>
+                        <th>备注</th>
+                        <th>记录时间</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% if fees_with_students %}
+                        {% for fee, student_nickname in fees_with_students %}
+                        <tr>
+                            <td>{{ loop.index + ((pagination.page - 1) * pagination.per_page) }}</td>
+                            <td>{{ student_nickname if student_nickname else '未知学生' }}</td>
+                            <td><a class="text-decoration-none" href="{{ url_for('course.index', course_id_highlight=fee.course_id) }}">{{ fee.title }}</a></td>
+                            <td>{{ fee.hours }}</td>
+                            <td>{{ fee.fees }}</td>
+                            <td>
+                                {% if fee.type == 1 %}
+                                <span class="badge bg-success">正常结算</span>
+                                {% elif fee.type == 2 %}
+                                <span class="badge bg-warning text-dark">课时补偿</span>
+                                {% else %}
+                                <span class="badge bg-secondary">未知</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ fee.remark if fee.remark else '-' }}</td>
+                            <td data-timestamp="{{ fee.created_at }}">{{ fee.created_at }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4">
+                            <div class="text-muted">
+                                <i class="fas fa-folder-open fa-3x mb-3"></i>
+                                <p>没有找到符合条件的课时记录</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            {% if pagination and pagination.pages > 1 %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                        <a class="page-link"
+                           href="{{ url_for('course_fee.list_fees', page=pagination.prev_num, start_date=start_date, end_date=end_date) if pagination.has_prev else '#' }}">
+                            上一页
+                        </a>
+                    </li>
+
+                    {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                    <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                        <a class="page-link"
+                           href="{{ url_for('course_fee.list_fees', page=page_num, start_date=start_date, end_date=end_date) }}">
+                            {{ page_num }}
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+
+                    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                        <a class="page-link"
+                           href="{{ url_for('course_fee.list_fees', page=pagination.next_num, start_date=start_date, end_date=end_date) if pagination.has_next else '#' }}">
+                            下一页
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    // Function to convert date string YYYY-MM-DD to UTC timestamp (start/end of day)
+    function dateToUTCTimestamp(dateString, isEndOfDay = false) {
+        if (!dateString) return null;
+        try {
+            const parts = dateString.split('-');
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const day = parseInt(parts[2], 10);
+            if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+            let utcDate;
+            if (isEndOfDay) {
+                utcDate = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+            } else {
+                utcDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+            }
+             if (isNaN(utcDate.getTime())) return null;
+            return Math.floor(utcDate.getTime() / 1000);
+        } catch (e) {
+            console.error("Error converting date string ", dateString, " to timestamp:", e);
+            return null;
+        }
+    }
+
+    // Function to convert UTC timestamp (seconds) back to YYYY-MM-DD string
+    function timestampToDateString(timestamp) {
+        if (timestamp === null || timestamp === undefined) return '';
+        try {
+            const date = new Date(timestamp * 1000);
+            const year = date.getUTCFullYear();
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        } catch (e) {
+            console.error("Error converting timestamp ", timestamp, " to date string:", e);
+            return '';
+        }
+    }
+
+    // Function to convert JSON data to CSV string
+    function convertToCSV(jsonData) {
+        // Add new headers for course info
+        const headers = ['#', '学生姓名', '课程名称', '上课时间', '课时数', '课时费 (元)', '类型', '备注', '结算时间']; // Renamed last column
+        const rows = jsonData.map(row => {
+            // Format fee creation timestamp to local time YYYY-MM-DD HH:MM:SS
+            let feeCreatedTime = ''
+            if (row.created_at_timestamp) {
+                 try {
+                     const date = new Date(row.created_at_timestamp * 1000);
+                     feeCreatedTime = date.toLocaleString('sv-SE', { // Use sv-SE for YYYY-MM-DD HH:MM:SS
+                         year: 'numeric', month: '2-digit', day: '2-digit',
+                         hour: '2-digit', minute: '2-digit', second: '2-digit',
+                         hour12: false
+                     });
+                 } catch(e) { console.error('Error formatting fee created_at timestamp', e); }
+            }
+
+            // Format course start/end timestamps
+            let courseTime = 'N/A';
+            if (row.course_start_time && row.course_end_time) {
+                try {
+                     const startDate = new Date(row.course_start_time * 1000);
+                     const endDate = new Date(row.course_end_time * 1000);
+                     const optionsDate = { year: 'numeric', month: '2-digit', day: '2-digit' };
+                     const optionsTime = { hour: '2-digit', minute: '2-digit', hour12: false };
+                     const dateString = startDate.toLocaleDateString('sv-SE', optionsDate);
+                     const startTimeString = startDate.toLocaleTimeString('en-GB', optionsTime);
+                     const endTimeString = endDate.toLocaleTimeString('en-GB', optionsTime);
+                     courseTime = `${dateString} ${startTimeString} - ${endTimeString}`;
+                } catch (e) {
+                    console.error('Error formatting course time', e);
+                }
+            }
+
+            // Escape fields containing commas or quotes
+            const escapeField = (field) => {
+                const str = String(field === null || field === undefined ? '' : field);
+                if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                    return `"${str.replace(/"/g, '""')}"`
+                }
+                return str;
+            };
+
+            // Add new fields in the correct order matching headers
+            return [
+                row.id,
+                row.student_name,
+                row.course_name, // Added
+                courseTime, // Added formatted course time
+                row.hours,
+                row.fees,
+                row.type,
+                row.remark,
+                feeCreatedTime // Use fee creation time here
+            ].map(escapeField).join(',');
+        });
+
+        // Add BOM for better Excel compatibility with UTF-8
+        const BOM = '\uFEFF';
+        return BOM + [headers.join(','), ...rows].join('\n');
+    }
+
+
+    // Function to trigger CSV download in browser
+    function downloadCSV(csvString, filename) {
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // --- Form submission handling for date timestamps ---
+        const feeSearchForm = document.querySelector('form[action="{{ url_for("course_fee.list_fees") }}"]');
+        if (feeSearchForm) {
+            feeSearchForm.addEventListener('submit', function(event) {
+                event.preventDefault(); // Prevent default form submission
+
+                const startDateInput = document.getElementById('start_date');
+                const endDateInput = document.getElementById('end_date');
+
+                 // --- Date Validation ---
+                 const startDateValue = startDateInput.value;
+                 const endDateValue = endDateInput.value;
+                 if (startDateValue && endDateValue && endDateValue < startDateValue) {
+                     alert('结束日期不能早于开始日期。');
+                     return; // Stop submission
+                 }
+                 // --- End Date Validation ---
+
+                const startTimestamp = dateToUTCTimestamp(startDateValue, false);
+                const endTimestamp = dateToUTCTimestamp(endDateValue, true);
+
+                // Build the query parameters - ONLY include timestamps for dates
+                const params = new URLSearchParams();
+                if (startTimestamp !== null) params.set('start_timestamp', startTimestamp);
+                if (endTimestamp !== null) params.set('end_timestamp', endTimestamp);
+
+                // Redirect with new parameters
+                console.log('Redirecting with params:', params.toString()); // Log params before redirect
+                window.location.href = `${this.action}?${params.toString()}`;
+            });
+
+             // --- Set initial date values from URL timestamps on page load ---
+             const urlParamsOnLoad = new URLSearchParams(window.location.search);
+             const startTsParam = urlParamsOnLoad.get('start_timestamp');
+             const endTsParam = urlParamsOnLoad.get('end_timestamp');
+
+             if (startTsParam !== null) {
+                 document.getElementById('start_date').value = timestampToDateString(parseInt(startTsParam, 10));
+             }
+             if (endTsParam !== null) {
+                 document.getElementById('end_date').value = timestampToDateString(parseInt(endTsParam, 10));
+             }
+             // --- End setting initial date values ---
+        }
+        // --- End Form submission handling ---
+
+        // --- Keep Existing code for time display in table and export ---
+        const timeCells = document.querySelectorAll('td[data-timestamp]');
+        timeCells.forEach(cell => {
+            const timestamp = parseInt(cell.getAttribute('data-timestamp'), 10);
+            if (!isNaN(timestamp)) {
+                try {
+                    const date = new Date(timestamp * 1000);
+                    const formattedTime = date.toLocaleString('sv-SE', {
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit',
+                        hour12: false
+                    });
+                    cell.textContent = formattedTime;
+                } catch (e) {
+                     console.error("Error formatting timestamp:", timestamp, e);
+                     cell.textContent = '时间无效';
+                }
+            } else {
+                 // cell.textContent = '-';
+            }
+        });
+
+        // Keep Export Button Handler - It needs to get timestamps from URL now
+        const exportButton = document.getElementById('exportFeesBtn');
+        if (exportButton) {
+            exportButton.addEventListener('click', function(event) { // Added event parameter
+                 event.preventDefault(); // Prevent default link behavior
+                 console.log('Export button clicked.');
+                // Get current filter TIMESTAMPS AND DATE STRINGS from URL/Inputs
+                const currentUrlParams = new URLSearchParams(window.location.search);
+                const startTs = currentUrlParams.get('start_timestamp'); // Will be string or null
+                const endTs = currentUrlParams.get('end_timestamp');     // Will be string or null
+                console.log('Timestamps from URL:', { startTs, endTs });
+
+                // Get date strings directly from input fields for filename generation
+                const startDateStr = document.getElementById('start_date').value || 'nodate';
+                const endDateStr = document.getElementById('end_date').value || 'nodate';
+                console.log('Date strings for filename:', { startDateStr, endDateStr });
+
+                // --- VALIDATION: Ensure both timestamps are present (not null) --- 
+                if (startTs === null || endTs === null) {
+                     console.warn('Export stopped: Missing start or end timestamp in URL.');
+                     alert('请先通过选择开始和结束日期进行搜索，然后再导出。'); // Changed alert message
+                     return; // Stop the export
+                }
+                // --- END VALIDATION ---
+
+                // Construct export URL with timestamps
+                const exportUrl = `{{ url_for("course_fee.export_fees") }}?start_timestamp=${startTs}&end_timestamp=${endTs}`;
+                console.log('Constructed Export URL:', exportUrl);
+
+                // Disable button and show loading state
+                exportButton.disabled = true;
+                exportButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 导出中...';
+
+                fetch(exportUrl)
+                    .then(response => {
+                         console.log('Fetch response status:', response.status);
+                         if (!response.ok) {
+                             // Try to get error message from response if possible
+                             return response.text().then(text => {
+                                console.error('Fetch error response body:', text);
+                                throw new Error(`HTTP error ${response.status}: ${text || response.statusText}`);
+                             });
+                         }
+                         return response.json();
+                    })
+                    .then(data => {
+                        console.log('Received data for export:', data);
+                        if (data.success && Array.isArray(data.data)) { // Check if data.data is an array
+                            if (data.data.length > 0) {
+                                 // --- Generate Dynamic Filename ---
+                                 const now = new Date();
+                                 const year = now.getFullYear();
+                                 const month = String(now.getMonth() + 1).padStart(2, '0');
+                                 const day = String(now.getDate()).padStart(2, '0');
+                                 const hours = String(now.getHours()).padStart(2, '0');
+                                 const minutes = String(now.getMinutes()).padStart(2, '0');
+                                 const seconds = String(now.getSeconds()).padStart(2, '0');
+                                 const currentDateTime = `${year}${month}${day}${hours}${minutes}${seconds}`;
+                                 // Clean date strings for filename (remove non-alphanumeric except hyphen)
+                                 const cleanStartDate = startDateStr.replace(/[^0-9a-zA-Z-]/g, '') || 'nodate';
+                                 const cleanEndDate = endDateStr.replace(/[^0-9a-zA-Z-]/g, '') || 'nodate';
+                                 const filename = `${currentDateTime}-${cleanStartDate}-to-${cleanEndDate}-课时记录.csv`;
+                                 console.log('Generated filename:', filename);
+                                 // --- End Generate Dynamic Filename ---
+
+                                 console.log('Attempting to convert data to CSV...');
+                                 const csvData = convertToCSV(data.data);
+                                 console.log(`Generated CSV data (length: ${csvData.length}). Attempting download...`);
+                                 downloadCSV(csvData, filename); // Use dynamic filename
+                                 console.log('Download function called.');
+                            } else {
+                                 console.log('No records found to export.');
+                                 alert('没有符合条件的记录可导出。');
+                            }
+                        } else {
+                            console.error('Export failed: Backend success flag false or data missing/not array.', data);
+                            throw new Error(data.message || '导出数据失败，收到的数据格式不正确。'); // More specific error
+                        }
+                    })
+                    .catch(error => {
+                         // Catch errors from fetch or subsequent processing
+                         console.error('Export process error:', error);
+                         alert(`导出失败: ${error.message}`);
+                    })
+                    .finally(() => {
+                         // Restore button state regardless of success/failure
+                         exportButton.disabled = false;
+                         exportButton.innerHTML = '<i class="fas fa-file-export"></i> 导出记录';
+                         console.log('Export process finished.');
+                    });
+            });
+        }
+    });
+</script>
+{% endblock %} 

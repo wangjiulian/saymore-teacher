@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}SayMore老师端{% endblock %}</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-color: #4169E1;
+            --primary-light: rgba(65, 105, 225, 0.1);
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --border-color: #E5E5E5;
+        }
+
+        body {
+            background-color: #F5F7FA;
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 侧边抽屉菜单 */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 250px;
+            background-color: white;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+        }
+
+        .sidebar-collapsed {
+            transform: translateX(-250px);
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .sidebar-content {
+            padding: 20px 0;
+        }
+
+        .sidebar-footer {
+            padding: 15px 20px;
+            border-top: 1px solid var(--border-color);
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: white;
+        }
+
+        /* 主内容区域 */
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            flex: 1;
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content-expanded {
+            margin-left: 0;
+        }
+
+        /* 导航栏 */
+        .custom-navbar {
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 15px 20px;
+            margin-bottom: 20px;
+        }
+
+        /* 内容卡片 */
+        .content-card {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        /* 导航菜单项 */
+        .nav-item {
+            padding: 10px 20px;
+            display: block;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .nav-item:hover {
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+        }
+
+        .nav-item.active {
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+            border-left: 3px solid var(--primary-color);
+        }
+
+        .nav-item i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* 按钮样式 */
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background-color: #3551b5;
+            border-color: #3551b5;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-250px);
+            }
+
+            .sidebar-expanded {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 999;
+                display: none;
+            }
+
+            .overlay-visible {
+                display: block;
+            }
+        }
+
+        /* 用户头像 */
+        .user-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 表单样式优化 */
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(65, 105, 225, 0.25);
+        }
+
+        /* 加载动画 */
+        .spinner-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100px;
+        }
+
+        /* 通知消息 */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1100;
+        }
+    </style>
+
+    {% block styles %}{% endblock %}
+</head>
+<body>
+<!-- 侧边抽屉菜单 -->
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <h3>SayMore</h3>
+        <p class="mb-0">欢迎回来，{{ current_user.name }}</p>
+    </div>
+
+    <div class="sidebar-content">
+        <a href="{{ url_for('profile.index') }}"
+           class="nav-item {% if request.endpoint == 'profile.index' or request.endpoint == 'profile.edit' %}active{% endif %}">
+            <i class="fas fa-user"></i> 个人信息
+        </a>
+        <a href="{{ url_for('availability.list_availabilities') }}"
+           class="nav-item {% if request.endpoint and request.endpoint.startswith('availability.') %}active{% endif %}">
+            <i class="fas fa-calendar-alt"></i> 课程安排
+        </a>
+        <a href="{{ url_for('course.index') }}"
+           class="nav-item {% if request.endpoint and request.endpoint.startswith('course.') %}active{% endif %}">
+            <i class="fas fa-book"></i> 课程记录
+        </a>
+        <a href="{{ url_for('course_fee.list_fees') }}"
+           class="nav-item {% if request.endpoint and request.endpoint.startswith('course_fee.') %}active{% endif %}">
+            <i class="fas fa-clock"></i> 课时记录
+        </a>
+<!--        <a href="#" class="nav-item">-->
+<!--            <i class="fas fa-users"></i> 学生管理-->
+<!--        </a>-->
+<!--        <a href="#" class="nav-item">-->
+<!--            <i class="fas fa-chart-line"></i> 教学数据-->
+<!--        </a>-->
+<!--        <a href="#" class="nav-item">-->
+<!--            <i class="fas fa-cog"></i> 系统设置-->
+<!--        </a>-->
+    </div>
+
+    <div class="sidebar-footer">
+        <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger w-100">
+            <i class="fas fa-sign-out-alt"></i> 退出登录
+        </a>
+    </div>
+</div>
+
+<!-- 遮罩层，移动端显示侧边栏时使用 -->
+<div class="overlay" id="overlay"></div>
+
+<!-- 主内容区域 -->
+<div class="main-content" id="main-content">
+    <!-- 顶部导航栏 -->
+    <div class="custom-navbar d-flex justify-content-between align-items-center">
+        <button id="sidebar-toggle" class="btn btn-light">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <div class="d-flex align-items-center">
+            <span class="me-3">{{ now().strftime('%Y-%m-%d') }}</span>
+            {% if current_user.is_authenticated %}
+            <div class="dropdown">
+                <button class="btn btn-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                    <img src="{{ current_user.avatar_url or '/static/img/default-avatar.png' }}" alt="头像" width="30"
+                         height="30" class="rounded-circle me-2">
+                    {{ current_user.name }}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                    <li><a class="dropdown-item" href="{{ url_for('profile.index') }}"><i class="fas fa-user me-2"></i>个人信息</a>
+                    </li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
+                    <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}"><i
+                            class="fas fa-sign-out-alt me-2"></i>退出登录</a></li>
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 页面内容 -->
+    <div class="container-fluid">
+        <!-- 闪现消息 -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show"
+             role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <!-- 页面主体内容 -->
+        {% block content %}{% endblock %}
+    </div>
+</div>
+
+<!-- 通知消息容器 -->
+<div class="toast-container"></div>
+
+<!-- JavaScript 依赖 -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+    // 侧边栏切换
+    document.addEventListener('DOMContentLoaded', function () {
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
+        const overlay = document.getElementById('overlay');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+
+        function toggleSidebar() {
+            const isMobile = window.innerWidth <= 768;
+
+            if (isMobile) {
+                sidebar.classList.toggle('sidebar-expanded');
+                overlay.classList.toggle('overlay-visible');
+            } else {
+                sidebar.classList.toggle('sidebar-collapsed');
+                mainContent.classList.toggle('main-content-expanded');
+            }
+        }
+
+        // 点击切换按钮
+        sidebarToggle.addEventListener('click', toggleSidebar);
+
+        // 点击遮罩层关闭侧边栏
+        overlay.addEventListener('click', function () {
+            sidebar.classList.remove('sidebar-expanded');
+            overlay.classList.remove('overlay-visible');
+        });
+
+        // 响应窗口大小变化
+        window.addEventListener('resize', function () {
+            const isMobile = window.innerWidth <= 768;
+
+            if (isMobile) {
+                sidebar.classList.remove('sidebar-collapsed');
+                mainContent.classList.remove('main-content-expanded');
+
+                if (sidebar.classList.contains('sidebar-expanded')) {
+                    overlay.classList.add('overlay-visible');
+                }
+            } else {
+                sidebar.classList.remove('sidebar-expanded');
+                overlay.classList.remove('overlay-visible');
+            }
+        });
+    });
+
+    // 通用函数：显示通知消息
+    function showToast(message, type = 'success') {
+        const toastContainer = document.querySelector('.toast-container');
+        const toastId = 'toast-' + Date.now();
+
+        const toastHtml = `
+                <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+
+        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement, {autohide: true, delay: 3000});
+        toast.show();
+
+        // 自动移除元素
+        toastElement.addEventListener('hidden.bs.toast', function () {
+            toastElement.remove();
+        });
+    }
+
+    // --- Timestamp Formatting Function ---
+    function formatTimestamps() {
+        document.querySelectorAll('[data-timestamp]').forEach(function (el) {
+            const ts = parseInt(el.dataset.timestamp);
+            if (!isNaN(ts) && ts > 0) { // Check if ts is a valid positive number
+                try {
+                    // Multiply by 1000 for milliseconds
+                    const date = new Date(ts * 1000);
+                    // Format using user's locale and time zone
+                    // 格式化为 YYYY-MM-DD HH:MM:SS
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0'); // 月份是 0-11
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    const seconds = String(date.getSeconds()).padStart(2, '0');
+                    const formatted = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                    el.textContent = formatted;
+                } catch (e) {
+                    console.error("Error formatting timestamp:", ts, e);
+                    el.textContent = 'Invalid Date';
+                }
+            } else if (el.textContent.trim() !== '' && !isNaN(parseInt(el.textContent.trim()))) {
+                // Only display placeholder if element has a number but it's not valid > 0 timestamp
+                el.textContent = '-';
+            } else if (el.textContent.trim() === '') {
+                el.textContent = '-'; // Ensure empty cells also get placeholder
+            }
+            // Otherwise, leave the content as is (might not be a timestamp)
+        });
+    }
+
+    // --- End Timestamp Formatting Function ---
+
+    // Format timestamps on initial page load
+    document.addEventListener('DOMContentLoaded', formatTimestamps);
+
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html> 

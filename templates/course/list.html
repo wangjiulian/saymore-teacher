@@ -1,0 +1,694 @@
+{% extends 'base.html' %}
+
+{% block title %}课程记录 - SayMore老师端{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('profile.index') }}">首页</a></li>
+<li class="breadcrumb-item active">课程记录</li>
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .highlight-row {
+        background-color: #ffffe0 !important; /* Light yellow background for highlighting */
+        transition: background-color 0.5s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">课程记录</h5>
+            <span></span>
+        </div>
+
+        <div class="card-body">
+            <!-- 搜索表单 -->
+            <form method="GET" action="{{ url_for('course.index') }}" class="row g-3 mb-4 align-items-end">
+                <div class="col-md-3">
+                    <label for="student_name" class="form-label">学生姓名/手机</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                        <input type="text" class="form-control" id="student_name" name="student_name"
+                               placeholder="搜索学生姓名/手机" value="{{ student_name }}">
+                    </div>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="status" class="form-label">课程状态</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-filter"></i></span>
+                        <select class="form-select" id="status" name="status">
+                            <option value="">全部状态</option>
+                            <option value="1" {% if status== 1 %}selected{% endif %}>待上课</option>
+                            <option value="2" {% if status== 2 %}selected{% endif %}>上课中</option>
+                            <option value="3" {% if status== 3 %}selected{% endif %}>已完成</option>
+                            <option value="4" {% if status== 4 %}selected{% endif %}>已取消</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="course_type" class="form-label">课程类型</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-book-open"></i></span>
+                        <select class="form-select" id="course_type" name="course_type">
+                            <option value="">全部类型</option>
+                            <option value="1" {% if course_type== 1 %}selected{% endif %}>正式课</option>
+                            <option value="2" {% if course_type== 2 %}selected{% endif %}>试听课</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="start_date" class="form-label">开始日期</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                        <input type="date" class="form-control" id="start_date" name="start_date"
+                               value="{{ start_date }}">
+                    </div>
+                </div>
+
+                <div class="col-md-2">
+                    <label for="end_date" class="form-label">结束日期</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                        <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
+                    </div>
+                </div>
+
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search"></i>
+                    </button>
+                    <a href="{{ url_for('course.index') }}" class="btn btn-secondary" title="重置">
+                        <i class="fas fa-sync"></i>
+                    </a>
+                </div>
+            </form>
+
+            <!-- 课程列表 -->
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>课程类型</th>
+                        <th>课程名称</th>
+                        <th>科目</th>
+                        <th>学生</th>
+                        <th>上课时间</th>
+                        <th>状态</th>
+                        <th width="230">操作</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% if courses %}
+                    {% for course in courses %}
+                    {# Add highlight class if course_id matches the highlight parameter #}
+                    <tr class="{% if course_id_highlight and course.id == course_id_highlight %}highlight-row{% endif %}">
+                        <td>{{ loop.index + ((pagination.page - 1) * pagination.per_page) }}</td>
+                        <td>
+                            {% if course.course_type == 1 %}
+                            <span class="badge bg-primary">正式课</span>
+                            {% elif course.course_type == 2 %}
+                            <span class="badge bg-warning text-dark">试听课</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ course.name }}</td>
+                        <td>
+                            {% if course.subject %}
+                            {% if course.subject.parent_id %}
+                            {% set parent_subject = get_parent_subject(course.subject.parent_id) %}
+                            {% if parent_subject %}
+                            {{ parent_subject.name }} - {{ course.subject.name }}
+                            {% else %}
+                            {{ course.subject.name }}
+                            {% endif %}
+                            {% else %}
+                            {{ course.subject.name }}
+                            {% endif %}
+                            {% else %}
+                            <span class="text-muted">未设置</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ course.student.nickname if course.student else '未知学生' }}</td>
+                        <td>
+                            <span data-start-time="{{ course.start_time }}"></span>
+                            <span data-end-time="{{ course.end_time }}"></span>
+                        </td>
+                        <td>
+                            {% if course.status == 1 %}
+                            <span class="badge bg-info">待上课</span>
+                            {% elif course.status == 2 %}
+                            <span class="badge bg-warning text-dark">上课中</span>
+                            {% elif course.status == 3 %}
+                            <span class="badge bg-success">已完成</span>
+                            {% elif course.status == 4 %}
+                            <span class="badge bg-danger">已取消</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                {% if course.status == 1 %}
+                                <button type="button" class="btn btn-success start-course-btn"
+                                        data-id="{{ course.id }}" data-name="{{ course.name }}">
+                                    <i class="fas fa-play"></i> 上课
+                                </button>
+                                <button type="button" class="btn btn-danger cancel-course-btn"
+                                        data-id="{{ course.id }}" data-name="{{ course.name }}">
+                                    <i class="fas fa-times"></i> 取消
+                                </button>
+                                {% elif course.status == 2 %}
+                                <button type="button" class="btn btn-success finish-course-btn"
+                                        data-id="{{ course.id }}" data-name="{{ course.name }}">
+                                    <i class="fas fa-check"></i> 下课
+                                </button>
+                                <!--                                <button type="button" class="btn btn-danger cancel-course-btn"-->
+                                <!--                                        data-id="{{ course.id }}" data-name="{{ course.name }}">-->
+                                <!--                                    <i class="fas fa-times"></i> 取消-->
+                                <!--                                </button>-->
+                                {% endif %}
+                                <button type="button" class="btn btn-info view-logs-btn"
+                                        data-id="{{ course.id }}" data-name="{{ course.name }}">
+                                    <i class="fas fa-history"></i> 操作日志
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4">
+                            <div class="text-muted">
+                                <i class="fas fa-search fa-3x mb-3"></i>
+                                <p>没有找到符合条件的课程记录</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            {% if pagination and pagination.pages > 1 %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {# Previous Page Link #}
+                    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                        <a class="page-link"
+                           href="{{ url_for('course.index', page=pagination.prev_num, status=status, student_name=student_name, course_type=course_type, start_timestamp=start_timestamp, end_timestamp=end_timestamp) if pagination.has_prev else '#' }}">
+                            上一页
+                        </a>
+                    </li>
+
+                    {# Page Numbers #}
+                    {% for page_num in pagination.iter_pages(left_edge=2, right_edge=2, left_current=2, right_current=3)
+                    %}
+                    {% if page_num %}
+                    <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                        <a class="page-link"
+                           href="{{ url_for('course.index', page=page_num, status=status, student_name=student_name, course_type=course_type, start_timestamp=start_timestamp, end_timestamp=end_timestamp) }}">
+                            {{ page_num }}
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+
+                    {# Next Page Link #}
+                    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                        <a class="page-link"
+                           href="{{ url_for('course.index', page=pagination.next_num, status=status, student_name=student_name, course_type=course_type, start_timestamp=start_timestamp, end_timestamp=end_timestamp) if pagination.has_next else '#' }}">
+                            下一页
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 取消课程模态窗口 -->
+<div class="modal fade" id="cancelCourseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">取消课程</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="cancelCourseForm">
+                    <input type="hidden" id="cancelCourseId">
+                    <p>您确定要取消课程 "<span id="cancelCourseName"></span>" 吗？</p>
+                    <div class="mb-3">
+                        <label for="cancelReason" class="form-label">取消原因 <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="cancelReason" rows="3" required></textarea>
+                        <div class="form-text"> ✅ 提前 1 小时及以上取消：课程免费取消</div>
+                        <div class="form-text">❌ 距上课时间 不足 1 小时取消：老师将无偿补上1课时</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-danger" id="confirmCancelBtn">确认取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 查看操作日志模态窗口 -->
+<div class="modal fade" id="viewLogsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">课程操作日志</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- 课程信息 -->
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">课程信息</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>课程名称：</strong> <span id="logCourseName"></span></p>
+                                <p><strong>课程类型：</strong> <span id="logCourseType"></span></p>
+                                <p><strong>学生：</strong> <span id="logStudentName"></span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>科目：</strong> <span id="logSubjectInfo"></span></p>
+                                <p><strong>上课时间：</strong> <span id="logCourseTime"></span></p>
+                                <p><strong>状态：</strong> <span id="logCourseStatus"></span></p>
+                            </div>
+                        </div>
+                        <div id="logCancelReasonContainer" class="d-none">
+                            <p><strong>取消原因：</strong> <span id="logCancelReason"></span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作日志列表 -->
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">操作记录</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table mb-0">
+                                <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>操作人</th>
+                                    <th>操作</th>
+                                    <th>操作时间</th>
+                                    <th>备注</th>
+                                </tr>
+                                </thead>
+                                <tbody id="logsTableBody">
+                                <!-- 日志记录将通过JavaScript动态加载 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="noLogsMessage" class="text-center p-4 d-none">
+                            <p class="text-muted mb-0">暂无操作记录</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    // Function to convert date string YYYY-MM-DD to UTC timestamp (start/end of day)
+    function dateToUTCTimestamp(dateString, isEndOfDay = false) {
+        if (!dateString) return null; // Return null if no date
+        try {
+            // Directly parse as YYYY-MM-DD - JS Date assumes local if no TZ
+            const parts = dateString.split('-');
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+            const day = parseInt(parts[2], 10);
+
+            if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+
+            let utcDate;
+            if (isEndOfDay) {
+                // End of the specified day in UTC
+                utcDate = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+            } else {
+                // Start of the specified day in UTC
+                utcDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+            }
+            if (isNaN(utcDate.getTime())) return null; // Check if date is valid
+            return Math.floor(utcDate.getTime() / 1000); // Return seconds timestamp
+        } catch (e) {
+            console.error("Error converting date string ", dateString, " to timestamp:", e);
+            return null;
+        }
+    }
+
+    // Function to convert UTC timestamp (seconds) back to YYYY-MM-DD string
+    function timestampToDateString(timestamp) {
+        if (timestamp === null || timestamp === undefined) return '';
+        try {
+            const date = new Date(timestamp * 1000);
+            const year = date.getUTCFullYear();
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        } catch (e) {
+            console.error("Error converting timestamp ", timestamp, " to date string:", e);
+            return '';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // --- Form submission handling for date timestamps ---
+        const courseSearchForm = document.querySelector('form[action="{{ url_for("course.index") }}"]');
+        if (courseSearchForm) {
+            courseSearchForm.addEventListener('submit', function (event) {
+                event.preventDefault(); // Prevent default form submission
+
+                const startDateInput = document.getElementById('start_date');
+                const endDateInput = document.getElementById('end_date');
+                const studentNameInput = document.getElementById('student_name');
+                const statusSelect = document.getElementById('status');
+                const courseTypeSelect = document.getElementById('course_type');
+
+                // --- Date Validation ---
+                const startDateValue = startDateInput.value;
+                const endDateValue = endDateInput.value;
+                if (startDateValue && endDateValue && endDateValue < startDateValue) {
+                    alert('结束日期不能早于开始日期。');
+                    return; // Stop submission
+                }
+                // --- End Date Validation ---
+
+                const startTimestamp = dateToUTCTimestamp(startDateValue, false);
+                const endTimestamp = dateToUTCTimestamp(endDateValue, true);
+
+                // Build the query parameters - ONLY include timestamps for dates
+                const params = new URLSearchParams();
+                params.set('student_name', studentNameInput.value || '');
+                params.set('status', statusSelect.value || '');
+                params.set('course_type', courseTypeSelect.value || '');
+                if (startTimestamp !== null) params.set('start_timestamp', startTimestamp);
+                if (endTimestamp !== null) params.set('end_timestamp', endTimestamp);
+
+                // Redirect with new parameters
+                console.log('Redirecting with params:', params.toString()); // Log params before redirect
+                window.location.href = `${this.action}?${params.toString()}`;
+            });
+
+            // --- Set initial date values from URL timestamps on page load ---
+            const urlParamsOnLoad = new URLSearchParams(window.location.search);
+            const startTsParam = urlParamsOnLoad.get('start_timestamp');
+            const endTsParam = urlParamsOnLoad.get('end_timestamp');
+
+            if (startTsParam !== null) {
+                document.getElementById('start_date').value = timestampToDateString(parseInt(startTsParam, 10));
+            }
+            if (endTsParam !== null) {
+                document.getElementById('end_date').value = timestampToDateString(parseInt(endTsParam, 10));
+            }
+            // --- End setting initial date values ---
+        }
+        // --- End Form submission handling ---
+
+        // --- Existing code for time display in table, modals, etc. ---
+        // Format course start and end times in table
+        const timeCells = document.querySelectorAll('td:has(span[data-start-time])');
+        timeCells.forEach(cell => {
+            const startSpan = cell.querySelector('span[data-start-time]');
+            const endSpan = cell.querySelector('span[data-end-time]');
+            const startTimeStamp = parseInt(startSpan.getAttribute('data-start-time'), 10);
+            const endTimeStamp = parseInt(endSpan.getAttribute('data-end-time'), 10);
+
+            if (!isNaN(startTimeStamp) && !isNaN(endTimeStamp)) {
+
+                cell.textContent = formatStartEndTime(startTimeStamp, endTimeStamp);
+            } else {
+                cell.textContent = '时间无效';
+            }
+        });
+
+        function formatStartEndTime(startTimeStamp, endTimeStamp) {
+            const startDate = new Date(startTimeStamp * 1000);
+            const endDate = new Date(endTimeStamp * 1000);
+            const optionsDate = {year: 'numeric', month: '2-digit', day: '2-digit'};
+            const optionsTime = {hour: '2-digit', minute: '2-digit', hour12: false};
+            const dateString = startDate.toLocaleDateString('sv-SE', optionsDate);
+            const startTimeString = startDate.toLocaleTimeString('en-GB', optionsTime);
+            const endTimeString = endDate.toLocaleTimeString('en-GB', optionsTime);
+            return `${dateString} ${startTimeString} - ${endTimeString}`;
+        }
+
+        // Highlight row logic
+        // ... (keep existing highlight logic)
+
+        // --- RESTORED: Modal and button logic (start, finish, cancel, view logs) ---
+        const cancelCourseModalElement = document.getElementById('cancelCourseModal');
+        const cancelCourseModal = cancelCourseModalElement ? new bootstrap.Modal(cancelCourseModalElement) : null;
+        const viewLogsModalElement = document.getElementById('viewLogsModal');
+        const viewLogsModal = viewLogsModalElement ? new bootstrap.Modal(viewLogsModalElement) : null;
+
+        // "上课"按钮点击事件
+        document.querySelectorAll('.start-course-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const courseId = this.dataset.id;
+                const courseName = this.dataset.name;
+                if (confirm(`确定开始上课 "${courseName}" 吗？`)) {
+                    startCourse(courseId, this);
+                }
+            });
+        });
+
+        // "下课"按钮点击事件
+        document.querySelectorAll('.finish-course-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const courseId = this.dataset.id;
+                const courseName = this.dataset.name;
+                if (confirm(`确定结束课程 "${courseName}" 吗？`)) {
+                    finishCourse(courseId, this);
+                }
+            });
+        });
+
+        // "取消"按钮点击事件
+        document.querySelectorAll('.cancel-course-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const courseId = this.dataset.id;
+                const courseName = this.dataset.name;
+                document.getElementById('cancelCourseId').value = courseId;
+                document.getElementById('cancelCourseName').textContent = courseName;
+                document.getElementById('cancelReason').value = '';
+                if (cancelCourseModal) cancelCourseModal.show();
+            });
+        });
+
+        // "确认取消"按钮点击事件
+        const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+        if (confirmCancelBtn) {
+            confirmCancelBtn.addEventListener('click', function () {
+                const courseId = document.getElementById('cancelCourseId').value;
+                const reason = document.getElementById('cancelReason').value.trim();
+                if (!reason) {
+                    alert('请填写取消原因');
+                    return;
+                }
+                cancelCourse(courseId, reason, this); // Pass button for disabling
+            });
+        }
+
+        // "查看操作日志"按钮点击事件
+        document.querySelectorAll('.view-logs-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const courseId = this.dataset.id;
+                // Reset modal content
+                const logsTableBody = document.getElementById('logsTableBody');
+                const noLogsMessage = document.getElementById('noLogsMessage');
+                if (logsTableBody) logsTableBody.innerHTML = '';
+                if (noLogsMessage) noLogsMessage.classList.add('d-none');
+                // Load logs
+                loadCourseLogs(courseId);
+                if (viewLogsModal) viewLogsModal.show();
+            });
+        });
+
+        // --- Helper Functions for Button Actions --- 
+
+        // Function to get CSRF token (if needed, adjust selector)
+        function getCsrfToken() {
+            const tokenElement = document.querySelector('meta[name="csrf-token"]');
+            return tokenElement ? tokenElement.getAttribute('content') : null;
+        }
+
+        // Start Course Function
+        function startCourse(courseId, buttonElement) {
+            buttonElement.disabled = true;
+            fetch(`/courses/${courseId}/start`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken() // Include if CSRF protection is enabled
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    location.reload();
+                    if (data.success) {
+                    } else {
+                        buttonElement.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Start course error:', error);
+                    alert('操作失败，请稍后重试');
+                    buttonElement.disabled = false;
+                });
+        }
+
+        // Finish Course Function
+        function finishCourse(courseId, buttonElement) {
+            buttonElement.disabled = true;
+            fetch(`/courses/${courseId}/finish`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    location.reload();
+                    if (data.success) {
+
+                    } else {
+                        buttonElement.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Finish course error:', error);
+                    alert('操作失败，请稍后重试');
+                    buttonElement.disabled = false;
+                });
+        }
+
+        // Cancel Course Function
+        function cancelCourse(courseId, reason, buttonElement) {
+            buttonElement.disabled = true;
+            fetch(`/courses/${courseId}/cancel`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({reason: reason})
+            })
+                .then(response => response.json())
+                .then(data => {
+                    location.reload();
+                    if (data.success) {
+                        if (cancelCourseModal) cancelCourseModal.hide();
+
+                    } else {
+                        buttonElement.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Cancel course error:', error);
+                    alert('操作失败，请稍后重试');
+                    buttonElement.disabled = false;
+                });
+        }
+
+        // Load Course Logs Function
+        function loadCourseLogs(courseId) {
+            const logsTableBody = document.getElementById('logsTableBody');
+            const noLogsMessage = document.getElementById('noLogsMessage');
+            const logCourseName = document.getElementById('logCourseName');
+            const logStudentName = document.getElementById('logStudentName');
+            const logCourseType = document.getElementById('logCourseType');
+            const logSubjectInfo = document.getElementById('logSubjectInfo');
+            const logCourseTime = document.getElementById('logCourseTime');
+            // ... other elements inside the log modal ...
+            const logCancelReasonContainer = document.getElementById('logCancelReasonContainer');
+            const logCancelReason = document.getElementById('logCancelReason');
+
+            // Show loading state or clear previous logs
+            if (logsTableBody) logsTableBody.innerHTML = '<tr><td colspan="5" class="text-center">加载中...</td></tr>';
+
+            fetch(`/courses/${courseId}/logs`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        logCourseType.textContent = data.course.course_type_text || 'N/A';
+                        logStudentName.textContent = data.course.student_name || 'N/A';
+                        logSubjectInfo.textContent = data.course.subject_info || 'N/A';
+                        logCourseTime.textContent = formatStartEndTime(data.course.start_time, data.course.end_time);
+                        logCourseStatus.textContent = data.course.status_text || 'N/A';
+
+                        // Populate course info in modal header (Example)
+                        if (logCourseName && data.course) logCourseName.textContent = data.course.name || 'N/A';
+                        // ... populate other course details ...
+                        if (logCancelReasonContainer && logCancelReason) {
+                            if (data.course && data.course.cancel_reason) {
+                                logCancelReason.textContent = data.course.cancel_reason;
+                                logCancelReasonContainer.classList.remove('d-none');
+                            } else {
+                                logCancelReasonContainer.classList.add('d-none');
+                            }
+                        }
+
+                        // Populate logs table
+                        if (logsTableBody) {
+                            logsTableBody.innerHTML = ''; // Clear loading/previous
+                            if (data.logs && data.logs.length > 0) {
+                                data.logs.forEach((log, index) => {
+                                    const row = logsTableBody.insertRow();
+                                    row.innerHTML = `
+                                         <td>${index + 1}</td>
+                                         <td>${log.operator_name || 'N/A'} <small class="d-block text-muted">(${log.operator_type_text || '类型' + log.operator_type})</small></td>
+                                         <td>${log.operation_text || `状态: ${log.old_status} -> ${log.new_status}`}</td>
+                                         <td data-timestamp="${log.operation_time}"></td>
+                                         <td>${log.cancel_reason || '-'}</td>
+                                     `;
+                                });
+                                if (noLogsMessage) noLogsMessage.classList.add('d-none');
+                            } else {
+                                if (noLogsMessage) noLogsMessage.classList.remove('d-none');
+                            }
+                        }
+                        // Maybe format timestamps in the log table if needed here
+                        formatTimestamps(); // Or format directly in innerHTML
+                    } else {
+                        if (logsTableBody) logsTableBody.innerHTML = `<tr><td colspan="5" class="text-danger text-center">${data.message || '加载操作日志失败'}</td></tr>`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Load logs error:', error);
+                    if (logsTableBody) logsTableBody.innerHTML = `<tr><td colspan="5" class="text-danger text-center">加载操作日志失败，请稍后重试</td></tr>`;
+                });
+        }
+
+    });
+</script>
+{% endblock %} 
