@@ -1,0 +1,64 @@
+# ConfigMap for saymore-teacher environment variables
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: saymore-teacher-config
+  namespace: prod-saymore  # Ensure this matches the Deployment namespace
+data:
+  FLASK_APP: app.py
+  FLASK_ENV: development
+  MYSQL_DATABASE: prod_happy_talk
+  MYSQL_HOST: <your-mysql-host>
+  MYSQL_PASSWORD: <your-mysql-password>
+  MYSQL_PORT: '3306'
+  MYSQL_USER: prod_teacher
+  OSS_ACCESS_KEY_ID: <your-oss-access-key-id>
+  OSS_ACCESS_KEY_SECRET: <your-oss-access-key-secret>
+  OSS_BUCKET_NAME: saymore
+  OSS_BUCKET_URL: 'https://saymore.oss-cn-hangzhou.aliyuncs.com'
+  OSS_ENDPOINT: 'https://oss-cn-hangzhou.aliyuncs.com'
+  UPLOAD_USE_OSS: 'true'
+
+---
+# Deployment for saymore-teacher application
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: saymore-teacher
+  namespace: prod-saymore  # Must match the ConfigMap namespace
+  labels:
+    app: saymore-teacher
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: saymore-teacher
+  template:
+    metadata:
+      labels:
+        app: saymore-teacher
+    spec:
+      containers:
+      - name: saymore-teacher
+        image: crpi-xxxx.cn-hangzhou.personal.cr.aliyuncs.com/saymore-teacher:develop
+        ports:
+        - containerPort: 5050
+        envFrom:
+        - configMapRef:
+            name: saymore-teacher-config  # Reference the environment config
+        env:
+        - name: UWSGI_PROCESSES
+          value: "1"
+        command:
+          - "uwsgi"
+        args:
+          - "--master"
+          - "--processes=$(UWSGI_PROCESSES)"
+          - "--http=0.0.0.0:5050"
+          - "--module=app:app"
+          - "--enable-threads"
+          - "--lazy-apps"
+          - "--vacuum"
+        securityContext:
+          runAsUser: 1001
+          readOnlyRootFilesystem: true
