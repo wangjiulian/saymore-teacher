@@ -1,11 +1,10 @@
-
 # SayMore Teacher Portal
 
-A comprehensive web application for online education teachers to manage their schedules, courses, and students.
+A comprehensive web application for online English teachers to manage their schedules, courses, and students.
 
 ## Overview
 
-SayMore Teacher Portal is designed for education teachers to efficiently manage their teaching activities. The platform facilitates course scheduling, student management, and teaching records tracking.
+SayMore Teacher Portal is designed for English teachers to efficiently manage their teaching activities. The platform facilitates course scheduling, student management, and teaching records tracking.
 
 ## Features
 
@@ -28,7 +27,7 @@ SayMore Teacher Portal is designed for education teachers to efficiently manage 
 
 1. Clone the repository:
    ```
-   git clone https://github.com/wangjiulian/saymore-teacher.git
+   git clone https://github.com/your-organization/saymore-teacher.git
    cd saymore-teacher
    ```
 
@@ -79,6 +78,38 @@ Key configuration options include:
 - `/forms/` - Form definitions and validation
 - `/utils/` - Utility functions
 
+## Testing
+
+The project includes a comprehensive test suite covering models, routes, and utility functions.
+
+### Running Tests
+
+To run the test suite:
+
+```bash
+# Make the test script executable
+chmod +x run_tests.sh
+
+# Run the tests with coverage reporting
+./run_tests.sh
+```
+
+Or manually:
+
+```bash
+# Install test dependencies
+pip install -r test-requirements.txt
+
+# Run tests with pytest
+python -m pytest tests/
+```
+
+### Test Structure
+
+- `tests/test_models.py` - Tests for database models
+- `tests/test_routes.py` - Tests for route endpoints
+- `tests/test_utils.py` - Tests for utility functions
+
 ## Development
 
 To contribute to this project:
@@ -92,7 +123,6 @@ To contribute to this project:
 
 - [SayMore Server](https://github.com/wangjiulian/saymore-server) - Backend API server for the SayMore platform
 - [SayMore Server](https://github.com/wangjiulian/saymore-mini) - Frontend web app for the SayMore platform
-
 
 ## License
 
